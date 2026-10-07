@@ -1,0 +1,5 @@
+﻿# 技能仓库 —— 只管 wiki-collect / wiki-write（zhihu 是外部技能，也纳入以免被误改）
+*.tmp
+*.bak
+_work/
+.tmp*
