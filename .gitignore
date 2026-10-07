@@ -1,5 +1,13 @@
-﻿# 技能仓库 —— 只管 wiki-collect / wiki-write（zhihu 是外部技能，也纳入以免被误改）
+# 技能仓库 —— 只管 wiki-collect / wiki-write（zhihu 一并纳入，防误改）
+#
+# ⛔ 本文件与 .git/ 都在 skills/ 根，**不在任何一个技能目录里**。
+#    DSH 的技能加载器只认 `<skills>/<技能名>/SKILL.md`（**恰好两段**），
+#    且技能目录内只收 `.md` —— 所以这两样**不会被当成技能，也不影响加载**。
+#
+# 专属临时件（不该进版本库）
 *.tmp
 *.bak
-_work/
-.tmp*
+*.bak[0-9]
+*~
+.DS_Store
+Thumbs.db
