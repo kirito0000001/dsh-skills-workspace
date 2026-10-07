@@ -429,6 +429,28 @@ export function wrc16(text) {
   return out;
 }
 
+/** `WVR-19`（**跨文件**）：复述测试里标了「**材料缺**」的 P0 ⇒ `07_交付说明.md` 必须留白。
+ *  ⛔ 实测撞出来的：一轮技术文档的两条 P0 里，**有一条根因在材料**（材料里根本没有那个信息），
+ *     **改稿解决不了** —— 编一段就是凭印象补事实。而 `WVR-19` 当时只写「P0 必须修完」，
+ *     **没给这种情形出口**；作者按「超过必须上报」处理是对的，但规则没答"该判 PASS 还是 PARTIAL"。
+ *  ⭐ 判据：**「材料缺」这个标记出现在复述测试里 ⇒ 交付说明必须有对应的留白**。 */
+export function wvr19Topic(recText, deliverText) {
+  const out = [];
+  const marked = [...recText.matchAll(/材料缺/g)].length;
+  if (marked === 0) return out;                       // 没标 → 本条不适用（n/a，由调用方打印）
+  if (deliverText == null) {
+    return [{ sev: 'major', id: 'WVR-19', line: 1,
+      why: `复述测试里标了 ${marked} 处「材料缺」，但没有 \`07_交付说明.md\` —— 材料缺口必须显式留白`,
+      ev: '「材料缺 P0」不阻断交付，但**必须在交付说明里留白**' }];
+  }
+  if (!/已知局限|留白|材料里没有|材料里没有答案|材料缺/.test(deliverText)) {
+    out.push({ sev: 'major', id: 'WVR-19', line: 1,
+      why: `复述测试里标了 ${marked} 处「材料缺」，而 \`07_交付说明.md\` 里没有对应的「已知局限／留白」`,
+      ev: '⛔ 不许把「材料缺 P0」改写成「已修」—— 那等于把"我们不知道"伪装成"我们查过了"' });
+  }
+  return out;
+}
+
 // ── 自检（`COL-S15`：夹具先行，自检不过则结果一律作废）──────────────────────
 // ⚠️ 负样本**照真实语料造**，不编。每条都注明它来自哪一次实测。
 const FIXTURES = [
@@ -567,6 +589,20 @@ const FIXTURES = [
     text: '见 `06_发布版.md` §3。\n', want: [] },
   { rule: 'WRC-16', name: '负10 ⛔ 普通的「见下文」不报（防误报）',
     text: '见下文说明。\n', want: [] },
+
+  // ── WVR-19（跨文件：复述测试 ↔ 交付说明）──────────────────────────────────
+  { rule: 'WVR-19', name: '正9 ⛔ 标了「材料缺」但交付说明没留白（实测形态）',
+    text: '## 处置\n\n- [x] P0-1 工具箱怎么装（材料缺）\n',
+    set: ['# 交付说明\n\n## 落地\n\n目标文件 `README.md`。\n'], want: ['major'] },
+  { rule: 'WVR-19', name: '正10 标了「材料缺」而根本没有交付说明',
+    text: '## 处置\n\n- [x] P0-2 grid 的虚幻侧步骤（材料缺）\n',
+    set: [null], want: ['major'] },
+  { rule: 'WVR-19', name: '负11 ⭐ 标了「材料缺」且交付说明有留白（实测形态，必须算合规）',
+    text: '## 处置\n\n- [x] P0-1 工具箱怎么装（材料缺）\n',
+    set: ['# 交付说明\n\n## 已知局限\n\n工具箱的安装方式**材料里没有**，本稿照实留白。\n'], want: [] },
+  { rule: 'WVR-19', name: '负12 ⛔ 没标「材料缺」时本条不适用（防误报）',
+    text: '## 处置\n\n- [x] P0-1 补一段前提\n',
+    set: ['# 交付说明\n\n正文\n'], want: [] },
 ];
 
 export function selftest() {
@@ -639,6 +675,8 @@ function runRule(rule, text, set, flags) {
     case 'WVR-06': return wvr06(text);
     case 'WVR-20': return wvr20(text);
     case 'WRC-16': return wrc16(text);
+    // `WVR-19` 是**跨文件**的：`text` = 复述测试，`set[0]` = 交付说明（不给 = null）
+    case 'WVR-19': return wvr19Topic(text, (set && set.length) ? (set[0] ?? null) : null);
     default: throw new Error('未知规则 ' + rule);
   }
 }
@@ -683,6 +721,13 @@ if (isMain) {
     }
     if (existsSync(p07)) {
       for (const f of wvr20(readFileSync(p07, 'utf8'))) found.push({ ...f, file: p07 });
+    }
+    // `WVR-19` 跨文件：复述测试标了「材料缺」⇒ 交付说明必须留白
+    if (existsSync(p05)) {
+      const rec = readFileSync(p05, 'utf8');
+      const del = existsSync(p07) ? readFileSync(p07, 'utf8') : null;
+      for (const f of wvr19Topic(rec, del)) found.push({ ...f, file: p07 });
+      if (!/材料缺/.test(rec)) console.log('  n/a: WVR-19（复述测试里没有「材料缺」标记）');
     }
     if (existsSync(p04)) {
       for (const f of wrc16(readFileSync(p04, 'utf8'))) found.push({ ...f, file: p04 });
