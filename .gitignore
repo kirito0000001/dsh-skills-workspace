@@ -6,8 +6,8 @@
 #
 # 专属临时件（不该进版本库）
 *.tmp
-*.bak
-*.bak[0-9]
+*.bak*
+*.orig*
 *~
 .DS_Store
 Thumbs.db
